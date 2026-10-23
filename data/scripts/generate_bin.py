@@ -14,7 +14,7 @@ codes = {
     ' ': '1110',
     'Others': '1111'
 }
-others_list = ['x', 'y', 'z']
+others_list = ['x', 'y', 'z', '\n']
 
 # 3. Simulate Member 2's encoding process
 compressed_bits = ""
