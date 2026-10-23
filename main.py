@@ -201,7 +201,7 @@ def main():
                 break
         output_file = f"{base}.decompressed.txt"
 
-    decompress(args.input, output_file)
+    decompress(args.input, args.output or output_file)
 
 
 if __name__ == "__main__":
