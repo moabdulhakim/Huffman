@@ -113,6 +113,60 @@ def compress(input_file, output_file, min_limit):
     
     print(f"Compression complete. Output written to {output_file}.")
 
+
+def decompress(input_file, output_file):
+    with open(input_file, 'rb') as f:
+        data = f.read()
+
+    overhead_len = int.from_bytes(data[0:4], byteorder='big')
+
+    overhead_bytes = data[4:4 + overhead_len]
+    overhead = json.loads(overhead_bytes.decode('utf-8'))
+    codes = overhead['codes']
+    others_list = overhead['others']
+
+    code_to_char = {code: char for char, code in codes.items()}
+    others_code = codes.get('Others')
+
+    rest = data[4 + overhead_len:]
+
+    padding_len = rest[0]
+
+    compressed_bytes = rest[1:]
+
+    bits = ''.join(format(byte, '08b') for byte in compressed_bytes)
+    if padding_len:
+        bits = bits[:-padding_len]
+
+    output_chars = []
+    i = 0
+    n = len(bits)
+    while i < n:
+        current = ''
+        matched = False
+        for j in range(i, n):
+            current += bits[j]
+            if others_code is not None and current == others_code:
+                byte_bits = bits[j + 1:j + 9]
+                output_chars.append(chr(int(byte_bits, 2)))
+                i = j + 9
+                matched = True
+                break
+            elif current in code_to_char:
+                output_chars.append(code_to_char[current])
+                i = j + 1
+                matched = True
+                break
+        if not matched:
+            raise ValueError("Corrupt data: no matching Huffman code found")
+
+    content = ''.join(output_chars)
+
+    with open(output_file, 'w') as f:
+        f.write(content)
+
+    print(f"Decompression complete. Output written to {output_file}.")
+
     
 def main():
   parser = argparse.ArgumentParser()
@@ -134,7 +188,20 @@ def main():
     compress(args.input, args.output or f"{args.input}.compressed.bin", args.limit)
 
   elif args.decompress:
-    pass
+    if not args.input:
+        print("Input file is required for decompression. use -i <input_file> to specify the input file.")
+        return
+
+    output_file = args.output
+    if not output_file:
+        base = args.input
+        for suffix in (".compressed.bin", ".bin"):
+            if base.endswith(suffix):
+                base = base[: -len(suffix)]
+                break
+        output_file = f"{base}.decompressed.txt"
+
+    decompress(args.input, output_file)
 
 
 if __name__ == "__main__":
